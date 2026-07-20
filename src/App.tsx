@@ -10,7 +10,9 @@ export default function App() {
   const WORKER_URL = "https://lingering-band-71f9.sinant7616.workers.dev";
 
   useEffect(() => {
-    fetch(`${WORKER_URL}/api/items`)
+    fetch(`${WORKER_URL}/api/items`, { 
+      credentials: "include" // ★ 추가
+    })
       .then(res => res.json())
       .then(data => setItems(data))
       .catch(err => console.error("데이터 불러오기 실패:", err));
@@ -21,7 +23,8 @@ export default function App() {
     try {
       setAuthStatus("서버에서 등록 옵션 가져오는 중...");
       
-      const res = await fetch(`${WORKER_URL}/api/auth/register-options`, { method: "POST" });
+      const res = await fetch(`${WORKER_URL}/api/auth/register-options`, { method: "POST",
+      credentials: "include" });
       const options = await res.json();
 
       setAuthStatus("기기 지문 센서를 터치해주세요...");
@@ -35,6 +38,7 @@ export default function App() {
       const verifyRes = await fetch(`${WORKER_URL}/api/auth/register-verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(credResponse),
       });
 

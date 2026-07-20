@@ -23,28 +23,38 @@ export default function App() {
     try {
       setAuthStatus("서버에서 등록 옵션 가져오는 중...");
       
-      const res = await fetch(`${WORKER_URL}/api/auth/register-options`, { method: "POST",
-      credentials: "include" });
-      const options = await res.json();
+      // 1. 프론트엔드에서 랜덤한 기기 고유 ID 생성 (UUID 형태)
+      const randomUserId = crypto.randomUUID(); 
 
+      // 2. 백엔드에 이 랜덤 ID를 함께 보냅니다.
+      const res = await fetch(`${WORKER_URL}/api/auth/register-options`, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId: randomUserId }) // ★ 수정됨
+      });
+      
+      const options = await res.json();
       setAuthStatus("기기 지문 센서를 터치해주세요...");
 
-      // 수정된 부분: 프론트엔드에서 Uint8Array로 변환하던 2줄 삭제!
-      // SimpleWebAuthn 라이브러리가 알아서 변환하도록 바로 넘겨줍니다.
+      // 3. 지문 인식 창 띄우기
       const credResponse = await startRegistration(options);
-
       setAuthStatus("지문 검증 및 저장 중...");
 
+      // 4. 생성된 지문 정보와 아까 만든 랜덤 ID를 함께 서버로 전송
       const verifyRes = await fetch(`${WORKER_URL}/api/auth/register-verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(credResponse),
+        body: JSON.stringify({ 
+          credential: credResponse, 
+          userId: randomUserId // ★ 수정됨
+        }),
       });
 
       const verifyData = await verifyRes.json();
       if (verifyData.success) {
-        setAuthStatus("✨ 지문 등록 및 로그인 성공!");
+        setAuthStatus("✨ 지문 등록 완료! (내 기기 전용 계정 생성됨)");
       } else {
         setAuthStatus("등록 실패: " + verifyData.error);
       }

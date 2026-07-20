@@ -21,22 +21,17 @@ export default function App() {
     try {
       setAuthStatus("서버에서 등록 옵션 가져오는 중...");
       
-      // 1. 서버에서 챌린지 옵션 받아오기
       const res = await fetch(`${WORKER_URL}/api/auth/register-options`, { method: "POST" });
       const options = await res.json();
 
-      // 문자열로 된 challenge를 브라우저가 이해하는 Uint8Array로 변환
-      options.challenge = Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0));
-      options.user.id = Uint8Array.from(atob(options.user.id), c => c.charCodeAt(0));
-
       setAuthStatus("기기 지문 센서를 터치해주세요...");
 
-      // 2. 브라우저 WebAuthn API 호출 (안드로이드 지문 창 팝업!)
+      // 수정된 부분: 프론트엔드에서 Uint8Array로 변환하던 2줄 삭제!
+      // SimpleWebAuthn 라이브러리가 알아서 변환하도록 바로 넘겨줍니다.
       const credResponse = await startRegistration(options);
 
       setAuthStatus("지문 검증 및 저장 중...");
 
-      // 3. 서버로 결과 전송
       const verifyRes = await fetch(`${WORKER_URL}/api/auth/register-verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

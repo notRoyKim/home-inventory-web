@@ -7,8 +7,7 @@ export default function App() {
   const [items, setItems] = useState<any[]>([]);
   const [authStatus, setAuthStatus] = useState<string>("로그인 안 됨");
 
-  // ★ 본인이 만든 Cloudflare Worker 주소로 변경하세요!
-  const WORKER_URL = "https://home-inventory-api.여러분의아이디.workers.dev";
+  const WORKER_URL = "https://lingering-band-71f9.sinant7616.workers.dev";
 
   useEffect(() => {
     fetch(`${WORKER_URL}/api/items`)

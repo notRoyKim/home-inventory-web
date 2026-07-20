@@ -1,50 +1,96 @@
 import { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid, Text } from '@react-three/drei';
+import { startRegistration } from '@simplewebauthn/browser';
 
 export default function App() {
   const [items, setItems] = useState<any[]>([]);
+  const [authStatus, setAuthStatus] = useState<string>("로그인 안 됨");
+
+  // ★ 본인이 만든 Cloudflare Worker 주소로 변경하세요!
+  const WORKER_URL = "https://home-inventory-api.여러분의아이디.workers.dev";
 
   useEffect(() => {
-    // ★ 주의: 아래 URL을 본인이 만든 Cloudflare Worker 주소로 반드시 변경하세요!
-    // 예시: "https://home-inventory-api.여러분의아이디.workers.dev/api/items"
-    const WORKER_URL =
-      'https://lingering-band-71f9.sinant7616.workers.dev/api/items';
-
-    fetch(WORKER_URL)
-      .then((res) => res.json())
-      .then((data) => setItems(data))
-      .catch((err) => console.error('데이터 불러오기 실패:', err));
+    fetch(`${WORKER_URL}/api/items`)
+      .then(res => res.json())
+      .then(data => setItems(data))
+      .catch(err => console.error("데이터 불러오기 실패:", err));
   }, []);
 
+  // 지문 등록 함수
+  const handleRegisterFingerprint = async () => {
+    try {
+      setAuthStatus("서버에서 등록 옵션 가져오는 중...");
+      
+      // 1. 서버에서 챌린지 옵션 받아오기
+      const res = await fetch(`${WORKER_URL}/api/auth/register-options`, { method: "POST" });
+      const options = await res.json();
+
+      // 문자열로 된 challenge를 브라우저가 이해하는 Uint8Array로 변환
+      options.challenge = Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0));
+      options.user.id = Uint8Array.from(atob(options.user.id), c => c.charCodeAt(0));
+
+      setAuthStatus("기기 지문 센서를 터치해주세요...");
+
+      // 2. 브라우저 WebAuthn API 호출 (안드로이드 지문 창 팝업!)
+      const credResponse = await startRegistration(options);
+
+      setAuthStatus("지문 검증 및 저장 중...");
+
+      // 3. 서버로 결과 전송
+      const verifyRes = await fetch(`${WORKER_URL}/api/auth/register-verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credResponse),
+      });
+
+      const verifyData = await verifyRes.json();
+      if (verifyData.success) {
+        setAuthStatus("✨ 지문 등록 및 로그인 성공!");
+      } else {
+        setAuthStatus("등록 실패: " + verifyData.error);
+      }
+    } catch (error: any) {
+      console.error(error);
+      setAuthStatus("에러 발생: " + error.message);
+    }
+  };
+
   return (
-    <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
-      <OrbitControls makeDefault />
-      <Grid
-        infiniteGrid
-        fadeDistance={20}
-        sectionColor="#666"
-        cellColor="#444"
-      />
-      <ambientLight intensity={0.5} />
-      <Environment preset="city" />
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      {/* HTML UI 오버레이 (지문 버튼 및 상태 표시) */}
+      <div style={{
+        position: 'absolute', top: 20, left: 20, zIndex: 10,
+        background: 'rgba(0,0,0,0.7)', color: 'white', padding: '15px', borderRadius: '10px'
+      }}>
+        <h3>집 3D 인벤토리</h3>
+        <p>상태: {authStatus}</p>
+        <button 
+          onClick={handleRegisterFingerprint}
+          style={{ padding: '10px 15px', background: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+          지문 등록 / 로그인
+        </button>
+      </div>
 
-      {/* 테스트용 3D 박스 */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="orange" />
-      </mesh>
+      {/* 3D 캔버스 영역 */}
+      <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
+        <OrbitControls makeDefault />
+        <Grid infiniteGrid fadeDistance={20} sectionColor="#666" cellColor="#444" />
+        <ambientLight intensity={0.5} />
+        <Environment preset="city" />
 
-      {/* Worker(D1)에서 가져온 데이터를 3D 공간의 텍스트로 표시 */}
-      {items.length > 0 ? (
-        <Text position={[0, 1.5, 0]} fontSize={0.5} color="white">
-          {items[0].name} ({items[0].description})
-        </Text>
-      ) : (
-        <Text position={[0, 1.5, 0]} fontSize={0.3} color="white">
-          데이터를 불러오거나 Worker 주소를 확인하세요...
-        </Text>
-      )}
-    </Canvas>
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="orange" />
+        </mesh>
+
+        {items.length > 0 && (
+          <Text position={[0, 1.5, 0]} fontSize={0.4} color="white">
+            {items[0].name} ({items[0].description})
+          </Text>
+        )}
+      </Canvas>
+    </div>
   );
 }

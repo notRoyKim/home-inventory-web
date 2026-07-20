@@ -30,10 +30,12 @@ export default function App() {
       // 2. 백엔드에 이 랜덤 ID를 함께 보냅니다.
       const res = await fetch(`${WORKER_URL}/api/auth/register-options`, { 
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" }, // ★ 이 헤더가 빠지면 서버가 JSON을 못 읽습니다
         credentials: "include",
-        body: JSON.stringify({ userId: randomUserId }),
-        inviteCode: inviteCode // ★ 추가
+        body: JSON.stringify({ 
+          userId: randomUserId,
+          inviteCode: inviteCode // ★ 이 변수 이름이 서버에서 읽는 이름과 정확히 같아야 합니다
+        }) 
       });
 
       if (!res.ok) {

@@ -6,6 +6,7 @@ import { startRegistration } from '@simplewebauthn/browser';
 export default function App() {
   const [items, setItems] = useState<any[]>([]);
   const [authStatus, setAuthStatus] = useState<string>("로그인 안 됨");
+  const [inviteCode, setInviteCode] = useState<string>("");
 
   const WORKER_URL = "https://lingering-band-71f9.sinant7616.workers.dev";
 
@@ -31,8 +32,14 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ userId: randomUserId }) // ★ 수정됨
+        body: JSON.stringify({ userId: randomUserId }),
+        inviteCode: inviteCode // ★ 추가
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error);
+     }
       
       const options = await res.json();
       setAuthStatus("기기 지문 센서를 터치해주세요...");
@@ -66,18 +73,28 @@ export default function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      {/* HTML UI 오버레이 (지문 버튼 및 상태 표시) */}
       <div style={{
         position: 'absolute', top: 20, left: 20, zIndex: 10,
         background: 'rgba(0,0,0,0.7)', color: 'white', padding: '15px', borderRadius: '10px'
       }}>
         <h3>집 3D 인벤토리</h3>
         <p>상태: {authStatus}</p>
+        
+        {/* ★ 초대 코드 입력 폼 추가 */}
+        <input 
+          type="password" 
+          placeholder="초대(마스터) 코드" 
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+          style={{ padding: '8px', marginBottom: '10px', width: '100%', borderRadius: '5px', border: 'none' }}
+        />
+        <br/>
+        
         <button 
           onClick={handleRegisterFingerprint}
           style={{ padding: '10px 15px', background: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
         >
-          지문 등록 / 로그인
+          지문 등록(초대코드 필요)
         </button>
       </div>
 
